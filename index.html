@@ -1,6 +1,47 @@
 
 <h2 class="sr-only">Gen AI T1 2026 — student results dashboard with grade distribution, score breakdown, and filters</h2>
 <style>
+  .funnel-container {
+  max-width: 700px;
+  margin-top: 14px;
+  font-family: Arial, sans-serif;
+}
+
+.funnel-item {
+  margin: 10px auto;
+  padding: 12px 18px;
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.total {
+  width: 100%;
+  background: #1f2937;
+}
+
+.both {
+  width: 82%;
+  background: #2563eb;
+}
+
+.l1 {
+  width: 68%;
+  background: #059669;
+}
+
+.incomplete {
+  width: 54%;
+  background: #d97706;
+}
+
+.fail {
+  width: 38%;
+  background: #dc2626;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font-sans)}
 .dash{padding:1.25rem 0}
@@ -34,7 +75,32 @@ body{font-family:var(--font-sans)}
   <div class="top-bar">
     <div>
       <div class="top-title">DL& Gen AI · T1 2026 — Results Dashboard</div>
-      <div class="top-sub" id="sub-count">Loading…</div>
+      <div class="funnel-container">
+  <div class="funnel-item total">
+    <span>Total Enrolled</span>
+    <strong>1189</strong>
+  </div>
+
+  <div class="funnel-item both">
+    <span>Completed L1 & L2</span>
+    <strong>347</strong>
+  </div>
+
+  <div class="funnel-item l1">
+    <span>Completed L1</span>
+    <strong>45</strong>
+  </div>
+
+  <div class="funnel-item incomplete">
+    <span>Incomplete</span>
+    <strong>733</strong>
+  </div>
+
+  <div class="funnel-item fail">
+    <span>FAIL</span>
+    <strong>64</strong>
+  </div>
+</div>
     </div>
     <div class="filters">
       <select id="fGrade" onchange="update()"><option value="">All grades</option><option>S</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select>
@@ -121,7 +187,7 @@ function avg(arr, key) {
 function update() {
   const data = filtered();
   const n = data.length;
-document.getElementById('sub-count').textContent = `${n} of ${TOTAL_ENROLLED} students · ${COMPLETE_BOTH_L1_L2} completed both L1 & L2 · ${COMPLETE_L1} completed L1 · ${INCOMPLETE} incomplete · ${FAIL} FAIL`;
+
 
 
 
