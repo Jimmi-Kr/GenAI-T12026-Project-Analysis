@@ -121,7 +121,9 @@ function avg(arr, key) {
 function update() {
   const data = filtered();
   const n = data.length;
-  document.getElementById('sub-count').textContent = `${n} of ${TOTAL_ENROLLED} students · ${INCOMPLETE} incomplete · ${UNREGISTERED} unregistered`;
+document.getElementById('sub-count').textContent = `${n} of ${TOTAL_ENROLLED} students · ${COMPLETE_BOTH_L1_L2} completed both L1 & L2 · ${COMPLETE_L1} completed L1 · ${INCOMPLETE} incomplete · ${FAIL} FAIL`;
+
+
 
   const scores = data.map(r => r.finalScore);
   const avgScore = n ? (scores.reduce((a,b)=>a+b,0)/n) : 0;
