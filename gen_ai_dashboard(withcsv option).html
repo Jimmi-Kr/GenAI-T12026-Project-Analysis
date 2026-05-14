@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gen AI Results Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;--surface:#fff;--surface2:#f0efeb;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#9a9890;
+  --r:12px;--r-sm:8px;
+  --purple:#534AB7;--teal:#1D9E75;--blue:#378ADD;
+  --amber:#EF9F27;--coral:#D85A30;--red:#E24B4A;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#181816;--surface:#222220;--surface2:#2a2a28;
+  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
+  --text:#f0efeb;--text2:#9a9890;--text3:#666660;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5}
+
+/* ── UPLOAD SCREEN ── */
+#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center}
+.upload-logo{font-size:13px;font-weight:600;letter-spacing:.4px;color:var(--text3);text-transform:uppercase;margin-bottom:2.5rem}
+.upload-card{background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--r);padding:2.5rem 3rem;max-width:480px;width:100%}
+.upload-card h1{font-size:22px;font-weight:600;letter-spacing:-.4px;margin-bottom:.5rem}
+.upload-card p{font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.6}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:var(--r-sm);padding:2.5rem 1.5rem;cursor:pointer;transition:all .15s;background:var(--surface2);position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--purple);background:color-mix(in srgb,var(--purple) 6%,var(--surface2))}
+.drop-icon{font-size:32px;margin-bottom:.75rem}
+.drop-label{font-size:14px;color:var(--text2);margin-bottom:.25rem}
+.drop-sub{font-size:12px;color:var(--text3)}
+#file-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-err{margin-top:1rem;font-size:13px;color:var(--red);display:none}
+.col-hint{margin-top:1.5rem;font-size:12px;color:var(--text3);text-align:left;line-height:1.8}
+.col-hint strong{color:var(--text2)}
+
+/* ── HEADER ── */
+header{background:var(--surface);border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;position:sticky;top:0;z-index:100}
+.hdr-left h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hdr-left p{font-size:12px;color:var(--text2);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:600;background:var(--purple);color:#fff;padding:3px 9px;border-radius:20px;letter-spacing:.3px}
+.btn-sm{font-size:12px;padding:5px 12px;border:.5px solid var(--border2);border-radius:var(--r-sm);background:var(--surface2);color:var(--text2);cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn-sm:hover{background:var(--border)}
+select.flt{font-size:12px;padding:5px 10px;height:30px;border:.5px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);color:var(--text);cursor:pointer;outline:none}
+select.flt:focus{border-color:var(--purple)}
+
+/* ── MAIN ── */
+main{max-width:1200px;margin:0 auto;padding:1.25rem 1.25rem 3rem}
+.status{font-size:12px;color:var(--text2);margin-bottom:1.1rem;display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex-shrink:0}
+
+/* ── METRICS ── */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.metric{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-sm);padding:13px 15px}
+.m-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:5px}
+.m-val{font-size:22px;font-weight:600;letter-spacing:-.5px}
+.m-sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ── CARDS ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid1{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.card-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:var(--text2)}
+.legend span{display:flex;align-items:center;gap:4px}
+.lsq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.chart-wrap{position:relative;width:100%}
+.grade-badges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.gbadge{display:flex;flex-direction:column;align-items:center;border-radius:var(--r-sm);padding:9px 12px;min-width:56px}
+
+/* ── INSIGHTS ── */
+.insights{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:12px}
+.insights h3{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.ilist{display:flex;flex-direction:column;gap:10px}
+.iitem{display:flex;gap:10px;font-size:13px;color:var(--text2);line-height:1.6}
+.inum{width:20px;height:20px;border-radius:50%;background:var(--surface2);color:var(--text3);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.iitem strong{color:var(--text);font-weight:500}
+
+footer{text-align:center;font-size:11px;color:var(--text3);padding:1.5rem 0 2rem;border-top:.5px solid var(--border);margin-top:.5rem}
+
+@media(max-width:640px){.grid2{grid-template-columns:1fr}header{padding:.75rem 1rem}main{padding:1rem 1rem 2rem}.upload-card{padding:1.5rem 1.25rem}}
+</style>
+</head>
+<body>
+
+<!-- ════════════════ UPLOAD SCREEN ════════════════ -->
+<div id="upload-screen">
+  <div class="upload-logo">Gen AI · Results Dashboard</div>
+  <div class="upload-card">
+    <h1>Upload Results CSV</h1>
+    <p>Drop your consolidated results sheet and the dashboard will build itself instantly — no server, everything runs in your browser.</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".csv">
+      <div class="drop-icon">📄</div>
+      <div class="drop-label">Click to choose or drag &amp; drop</div>
+      <div class="drop-sub">CSV file · processed locally</div>
+    </div>
+    <div class="upload-err" id="upload-err"></div>
+
+    <div class="col-hint">
+      <strong>Expected columns (multiline headers are fine):</strong><br>
+      Pass/Fail · Project Report (10) · L2 Viva Score (40) · Notebook &amp; Code Quality (5) ·
+      Project report Submission (5) · Kaggle leaderboard score · Milestone marks ·
+      Bonus for deployment · Final score · Final Grade
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ DASHBOARD ════════════════ -->
+<div id="dashboard" style="display:none">
+  <header>
+    <div class="hdr-left">
+      <h1>Gen AI · Results Dashboard</h1>
+      <p id="hdr-sub">—</p>
+    </div>
+    <div class="hdr-right">
+      <span class="badge" id="hdr-badge">—</span>
+      <select class="flt" id="fGrade" onchange="update()"><option value="">All grades</option></select>
+      <select class="flt" id="fBonus" onchange="update()">
+        <option value="">Any bonus</option>
+        <option value="5">Bonus = 5</option>
+        <option value="2">Bonus = 2</option>
+        <option value="0">No bonus</option>
+      </select>
+      <select class="flt" id="fMilestone" onchange="update()">
+        <option value="">Any milestone</option>
+        <option value="10">Milestone = 10</option>
+        <option value="8">Milestone = 8</option>
+        <option value="6">Milestone ≤ 6</option>
+      </select>
+      <button class="btn-sm" onclick="resetFilters()">Reset</button>
+      <button class="btn-sm" onclick="reUpload()">↑ New file</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="status"><span class="dot"></span><span id="status-txt">—</span></div>
+    <div class="metrics" id="metrics"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Grade distribution</div>
+        <div class="grade-badges" id="grade-badges"></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="gradeChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Final score distribution</div>
+        <div class="legend" id="leg-score"></div>
+        <div class="chart-wrap" style="height:210px"><canvas id="scoreChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid1">
+      <div class="card">
+        <div class="card-title">Viva score vs final score — coloured by grade</div>
+        <div class="legend" id="leg-scatter"></div>
+        <div class="chart-wrap" style="height:270px"><canvas id="scatterChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Average component performance (% of max marks)</div>
+        <div class="chart-wrap" style="height:195px"><canvas id="compChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Kaggle leaderboard score distribution</div>
+        <div class="chart-wrap" style="height:195px"><canvas id="kaggleChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="insights">
+      <h3>Auto-generated insights</h3>
+      <div class="ilist" id="insights-list"></div>
+    </div>
+
+    <footer id="dash-footer">—</footer>
+  </main>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   COLUMN DETECTION — normalise messy headers
+══════════════════════════════════════════════ */
+function normalise(s){ return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+
+function detectCol(headers, ...patterns){
+  for(const p of patterns){
+    const re = typeof p==='string' ? new RegExp(p,'i') : p;
+    const h = headers.find(h=>re.test(normalise(h)));
+    if(h) return h;
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════
+   CSV PARSER  (handles quoted fields + \n in headers)
+══════════════════════════════════════════════ */
+function parseCSV(text){
+  const rows=[], lines=[];
+  let cur='', inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){ inQ=!inQ; cur+=c; }
+    else if(c==='\n'&&!inQ){ lines.push(cur); cur=''; }
+    else { cur+=c; }
+  }
+  if(cur) lines.push(cur);
+
+  function splitLine(line){
+    const cells=[]; let cell='',q=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){ q=!q; }
+      else if(c===','&&!q){ cells.push(cell.trim()); cell=''; }
+      else { cell+=c; }
+    }
+    cells.push(cell.trim());
+    return cells;
+  }
+
+  const headers = splitLine(lines[0]).map(h=>h.replace(/^"|"$/g,'').replace(/\\n|\n/g,' ').trim());
+  for(let i=1;i<lines.length;i++){
+    if(!lines[i].trim()) continue;
+    const vals = splitLine(lines[i]);
+    const obj={};
+    headers.forEach((h,j)=>{ obj[h]=(vals[j]||'').replace(/^"|"$/g,'').trim(); });
+    rows.push(obj);
+  }
+  return {headers, rows};
+}
+
+/* ══════════════════════════════════════════════
+   GLOBAL STATE
+══════════════════════════════════════════════ */
+let ALL_DATA=[], COLS={}, GRADE_ORDER=[], GRADE_COLORS={};
+const PALETTE=['#534AB7','#1D9E75','#378ADD','#EF9F27','#D85A30','#E24B4A','#A855F7','#0EA5E9'];
+let charts={};
+
+/* ══════════════════════════════════════════════
+   UPLOAD HANDLING
+══════════════════════════════════════════════ */
+const dropZone=document.getElementById('drop-zone');
+const fileInput=document.getElementById('file-input');
+const uploadErr=document.getElementById('upload-err');
+
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');handleFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function showErr(msg){ uploadErr.textContent=msg; uploadErr.style.display='block'; }
+function hideErr(){ uploadErr.style.display='none'; }
+
+function handleFile(file){
+  hideErr();
+  if(!file){ showErr('No file selected.'); return; }
+  if(!file.name.endsWith('.csv')){ showErr('Please upload a .csv file.'); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{ try{ processCSV(e.target.result); } catch(err){ showErr('Error reading file: '+err.message); } };
+  reader.readAsText(file);
+}
+
+function processCSV(text){
+  const {headers, rows} = parseCSV(text);
+
+  /* ── map columns ── */
+  const C={};
+  C.passFail   = detectCol(headers,'pass.*fail','result.*viva','viva.*pass');
+  C.project    = detectCol(headers,'project.*report.*10','project.*report','report.*10');
+  C.viva       = detectCol(headers,'l2.*viva','viva.*score','viva.*40');
+  C.notebook   = detectCol(headers,'notebook.*code','notebook.*quality','code.*quality');
+  C.submission = detectCol(headers,'project.*report.*submiss','report.*submiss','submiss.*5');
+  C.kaggle     = detectCol(headers,'kaggle');
+  C.milestone  = detectCol(headers,'milestone');
+  C.bonus      = detectCol(headers,'bonus','deployment');
+  C.finalScore = detectCol(headers,/^final score$/i,/final score$/i,'rounded score','final.*score');
+  C.grade      = detectCol(headers,'final grade','grade');
+  C.result     = detectCol(headers,/^result$/i);
+  C.rollNo     = detectCol(headers,'roll','student.*id','roll.*no','email');
+  C.name       = detectCol(headers,/^studentname$/i,'student.*name',/^name$/i);
+
+  const missing=[];
+  if(!C.viva) missing.push('L2 Viva Score');
+  if(!C.finalScore) missing.push('Final score');
+  if(!C.grade) missing.push('Final Grade');
+  if(missing.length){ showErr('Could not find required columns: '+missing.join(', ')+'. Please check your CSV headers.'); return; }
+
+  COLS=C;
+
+  /* ── parse rows ── */
+  function f(r,k){ if(!k)return 0; const v=parseFloat(r[k]); return isNaN(v)?0:v; }
+
+  const active=[];
+  let totalRows=0, incompleteCount=0, unregistered=0, blank=0;
+
+  for(const r of rows){
+    totalRows++;
+    const g=(r[C.grade]||'').trim();
+    if(g==='I'){ incompleteCount++; continue; }
+    if(g==='U'){ unregistered++; continue; }
+    if(g===''){ blank++; continue; }
+
+    const fs=f(r,C.finalScore);
+    if(!fs && !r[C.grade]) continue;
+
+    active.push({
+      rollNo:   C.rollNo ? (r[C.rollNo]||'') : '',
+      name:     C.name   ? (r[C.name]||'')   : '',
+      passFail: C.passFail ? (r[C.passFail]||'') : '',
+      project:  f(r,C.project),
+      viva:     f(r,C.viva),
+      notebook: f(r,C.notebook),
+      submission: f(r,C.submission),
+      kaggle:   f(r,C.kaggle),
+      milestone: f(r,C.milestone),
+      bonus:    f(r,C.bonus),
+      finalScore: fs,
+      grade:    g,
+      result:   C.result ? (r[C.result]||'') : '',
+      _totalRows: totalRows,
+    });
+  }
+
+  if(!active.length){ showErr('No graded rows found. Check that "Final Grade" column has values like A, B, C, S, D, E.'); return; }
+
+  /* ── build grade order from data ── */
+  const gradeCounts={};
+  active.forEach(r=>{ gradeCounts[r.grade]=(gradeCounts[r.grade]||0)+1; });
+  const preferredOrder=['S','A','B','C','D','E','F'];
+  GRADE_ORDER = preferredOrder.filter(g=>gradeCounts[g]).concat(Object.keys(gradeCounts).filter(g=>!preferredOrder.includes(g)));
+  GRADE_ORDER.forEach((g,i)=>{ GRADE_COLORS[g]=PALETTE[i%PALETTE.length]; });
+
+  ALL_DATA = active;
+
+  /* ── populate grade filter ── */
+  const fg=document.getElementById('fGrade');
+  fg.innerHTML='<option value="">All grades</option>';
+  GRADE_ORDER.forEach(g=>{ const o=document.createElement('option'); o.value=g; o.textContent=`Grade ${g}`; fg.appendChild(o); });
+
+  /* ── header meta ── */
+  document.getElementById('hdr-sub').textContent=`${totalRows} enrolled · ${active.length} graded`;
+  document.getElementById('hdr-badge').textContent='IIT Madras · DS';
+  document.getElementById('dash-footer').textContent=
+    `Gen AI Results Dashboard · ${totalRows} enrolled · ${active.length} graded · ${incompleteCount} incomplete · ${unregistered} unregistered · Dashboard generated ${new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'})}`;
+
+  /* ── show dashboard ── */
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  update();
+}
+
+function reUpload(){
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  document.getElementById('file-input').value='';
+  ALL_DATA=[]; charts={};
+}
+
+/* ══════════════════════════════════════════════
+   FILTERS
+══════════════════════════════════════════════ */
+function resetFilters(){
+  document.getElementById('fGrade').value='';
+  document.getElementById('fBonus').value='';
+  document.getElementById('fMilestone').value='';
+  update();
+}
+
+function filtered(){
+  const g=document.getElementById('fGrade').value;
+  const b=document.getElementById('fBonus').value;
+  const m=document.getElementById('fMilestone').value;
+  return ALL_DATA.filter(r=>{
+    if(g && r.grade!==g) return false;
+    if(b!==''){
+      const bv=parseFloat(b);
+      if(bv===0 && r.bonus!==0) return false;
+      if(bv!==0 && r.bonus!==bv) return false;
+    }
+    if(m!==''){
+      if(m==='10' && r.milestone!==10) return false;
+      if(m==='8'  && r.milestone!==8)  return false;
+      if(m==='6'  && r.milestone>6)    return false;
+    }
+    return true;
+  });
+}
+
+/* ══════════════════════════════════════════════
+   CHART HELPERS
+══════════════════════════════════════════════ */
+function mkChart(id, config){
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart(document.getElementById(id),config);
+}
+
+function avg(arr,key){ return arr.length?arr.reduce((s,r)=>s+r[key],0)/arr.length:0; }
+
+/* ══════════════════════════════════════════════
+   MAIN UPDATE
+══════════════════════════════════════════════ */
+function update(){
+  const data=filtered(), n=data.length;
+  const totalEnrolled=ALL_DATA.length>0?ALL_DATA[0]._totalRows||ALL_DATA.length:ALL_DATA.length;
+
+  /* status */
+  const hasFilter=document.getElementById('fGrade').value||document.getElementById('fBonus').value||document.getElementById('fMilestone').value;
+  document.getElementById('status-txt').textContent = hasFilter
+    ? `Filtered to ${n} of ${ALL_DATA.length} graded students`
+    : `Showing all ${ALL_DATA.length} graded students`;
+
+  /* metrics */
+  const scores=data.map(r=>r.finalScore);
+  const avgScore=n?scores.reduce((a,b)=>a+b,0)/n:0;
+  const maxScore=n?Math.max(...scores):0;
+  const minScore=n?Math.min(...scores):0;
+  const passed=data.filter(r=>/pass/i.test(r.passFail)||/pass/i.test(r.result)).length;
+  const topGrade=GRADE_ORDER[0];
+  const topCount=data.filter(r=>r.grade===topGrade).length;
+  const bonusCount=data.filter(r=>r.bonus>0).length;
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="m-label">Students</div><div class="m-val">${n}</div></div>
+    <div class="metric"><div class="m-label">Avg score</div><div class="m-val">${avgScore.toFixed(1)}</div></div>
+    <div class="metric"><div class="m-label">Highest</div><div class="m-val">${maxScore}</div><div class="m-sub">Lowest: ${minScore}</div></div>
+    <div class="metric"><div class="m-label">Grade ${topGrade}</div><div class="m-val">${topCount}</div><div class="m-sub">${n?Math.round(topCount/n*100):0}%</div></div>
+    <div class="metric"><div class="m-label">Passed viva</div><div class="m-val">${passed}</div><div class="m-sub">${n?Math.round(passed/n*100):0}%</div></div>
+    <div class="metric"><div class="m-label">Got bonus</div><div class="m-val">${bonusCount}</div><div class="m-sub">${n?Math.round(bonusCount/n*100):0}%</div></div>
+  `;
+
+  /* grade distribution */
+  const gc={}; GRADE_ORDER.forEach(g=>gc[g]=0); data.forEach(r=>{if(gc[r.grade]!==undefined)gc[r.grade]++;});
+  const activeGrades=GRADE_ORDER.filter(g=>gc[g]>0);
+
+  document.getElementById('grade-badges').innerHTML=activeGrades.map(g=>{
+    const c=gc[g],pct=n?Math.round(c/n*100):0;
+    return `<div class="gbadge" style="background:${GRADE_COLORS[g]}18;border:1px solid ${GRADE_COLORS[g]}44">
+      <span style="font-size:14px;font-weight:700;color:${GRADE_COLORS[g]}">${g}</span>
+      <span style="font-size:18px;font-weight:600;color:var(--text)">${c}</span>
+      <span style="font-size:10px;color:var(--text3)">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  mkChart('gradeChart',{type:'bar',data:{labels:activeGrades,datasets:[{data:activeGrades.map(g=>gc[g]),backgroundColor:activeGrades.map(g=>GRADE_COLORS[g]),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#888'}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888',stepSize:Math.ceil(n/8)}}}}});
+
+  /* score histogram — dynamic buckets */
+  const lo=Math.floor(minScore/10)*10, hi=Math.ceil(maxScore/10)*10;
+  const bkts=[],bdata=[],bcolors=['#E24B4A','#D85A30','#EF9F27','#378ADD','#1D9E75','#534AB7','#A855F7','#0EA5E9'];
+  for(let s=lo;s<hi;s+=10){
+    bkts.push(`${s}–${s+10}`);
+    bdata.push(data.filter(r=>r.finalScore>=s&&r.finalScore<s+10).length);
+  }
+  // last bucket inclusive
+  if(data.filter(r=>r.finalScore===hi).length>0){ bdata[bdata.length-1]+=data.filter(r=>r.finalScore===hi).length; }
+  const bclrs=bdata.map((_,i)=>bcolors[i%bcolors.length]);
+  document.getElementById('leg-score').innerHTML=bkts.map((b,i)=>`<span><span class="lsq" style="background:${bclrs[i]}"></span>${b}</span>`).join('');
+  mkChart('scoreChart',{type:'bar',data:{labels:bkts,datasets:[{data:bdata,backgroundColor:bclrs,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#888',autoSkip:true,maxRotation:40,font:{size:10}}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}}}}});
+
+  /* scatter */
+  const sds=activeGrades.map(g=>({label:`Grade ${g}`,data:data.filter(r=>r.grade===g).map(r=>({x:r.viva,y:r.finalScore})),backgroundColor:GRADE_COLORS[g]+'CC',pointRadius:4,pointHoverRadius:6}));
+  document.getElementById('leg-scatter').innerHTML=activeGrades.map(g=>`<span><span class="lsq" style="background:${GRADE_COLORS[g]}"></span>Grade ${g}</span>`).join('');
+  mkChart('scatterChart',{type:'scatter',data:{datasets:sds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Viva: ${ctx.raw.x} · Final: ${ctx.raw.y}`}}},scales:{x:{title:{display:true,text:'Viva score',color:'#888',font:{size:12}},grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}},y:{title:{display:true,text:'Final score',color:'#888',font:{size:12}},grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}}}}});
+
+  /* components */
+  const comps=[
+    {label:'Project report', key:'project',  max:10},
+    {label:'Viva',           key:'viva',     max:40},
+    {label:'Notebook',       key:'notebook', max:5},
+    {label:'Submission',     key:'submission',max:5},
+    {label:'Milestone',      key:'milestone',max:10},
+    {label:'Bonus',          key:'bonus',    max:5},
+  ].filter(c=>data.some(r=>r[c.key]>0));
+  const cpcts=comps.map(c=>n?Math.round(avg(data,c.key)/c.max*100):0);
+  const cclrs=['#534AB7','#1D9E75','#378ADD','#EF9F27','#D85A30','#E24B4A'];
+  mkChart('compChart',{type:'bar',data:{labels:comps.map(c=>c.label),datasets:[{data:cpcts,backgroundColor:cclrs.slice(0,comps.length),borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}% of max`}}},scales:{x:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#888'},grid:{color:'rgba(128,128,128,0.1)'}},y:{grid:{display:false},ticks:{color:'#888',font:{size:11}}}}}});
+
+  /* kaggle */
+  const kvals=data.map(r=>r.kaggle).filter(v=>v>0);
+  if(kvals.length){
+    const klo=Math.floor(Math.min(...kvals)*20)/20, khi=Math.ceil(Math.max(...kvals)*20)/20;
+    const kb=[],kd=[];
+    for(let s=klo;s<khi;s+=0.04){
+      kb.push(s.toFixed(2)+'–'+(s+0.04).toFixed(2));
+      kd.push(kvals.filter(v=>v>=s&&v<s+0.04).length);
+    }
+    mkChart('kaggleChart',{type:'bar',data:{labels:kb,datasets:[{data:kd,backgroundColor:'#1D9E75',borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#888',autoSkip:true,maxRotation:40,font:{size:10}}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}}}}});
+  } else {
+    const ctx=document.getElementById('kaggleChart').getContext('2d');
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.font='14px system-ui'; ctx.fillStyle='#888'; ctx.textAlign='center';
+    ctx.fillText('No Kaggle score data found',ctx.canvas.width/2,80);
+  }
+
+  /* auto insights */
+  buildInsights(data,n,passed,topGrade,topCount,avgScore);
+}
+
+/* ══════════════════════════════════════════════
+   AUTO INSIGHTS
+══════════════════════════════════════════════ */
+function buildInsights(data,n,passed,topGrade,topCount,avgScore){
+  const insights=[];
+  if(!n){ document.getElementById('insights-list').innerHTML='<div style="color:var(--text3);font-size:13px">No data to analyse.</div>'; return; }
+
+  /* 1 — pass rate */
+  const passPct=Math.round(passed/n*100);
+  insights.push(`<strong>Pass rate: ${passPct}% (${passed}/${n} students)</strong> passed the viva component. Average final score is <strong>${avgScore.toFixed(1)}</strong>.`);
+
+  /* 2 — top grade */
+  insights.push(`<strong>${topCount} students (${Math.round(topCount/n*100)}%) earned the top grade (${topGrade}).</strong> ` +
+    (GRADE_ORDER.length>1 ? `Next grade ${GRADE_ORDER[1]} has ${data.filter(r=>r.grade===GRADE_ORDER[1]).length} students.` : ''));
+
+  /* 3 — bonus impact */
+  const withBonus=data.filter(r=>r.bonus>0);
+  const withoutBonus=data.filter(r=>r.bonus===0);
+  if(withBonus.length&&withoutBonus.length){
+    const avgWith=avg(withBonus,'finalScore'), avgWithout=avg(withoutBonus,'finalScore');
+    insights.push(`<strong>Deployment bonus matters.</strong> Students with a bonus averaged <strong>${avgWith.toFixed(1)}</strong> vs <strong>${avgWithout.toFixed(1)}</strong> without — a <strong>${(avgWith-avgWithout).toFixed(1)}-point gap</strong>. ${Math.round(withBonus.length/n*100)}% of students received it.`);
+  }
+
+  /* 4 — viva spread */
+  const vivas=data.map(r=>r.viva).filter(v=>v>0);
+  if(vivas.length){
+    const vMin=Math.min(...vivas),vMax=Math.max(...vivas),vAvg=avg(data,'viva');
+    insights.push(`<strong>Viva scores range from ${vMin} to ${vMax}</strong> (avg ${vAvg.toFixed(1)}). ` +
+      (vMax-vMin<10?'The narrow spread suggests viva rarely differentiates students at the top.':'The wide spread means viva is a meaningful grade differentiator.'));
+  }
+
+  /* 5 — milestone */
+  const ms10=data.filter(r=>r.milestone===10).length;
+  if(ms10){
+    const pct=Math.round(ms10/n*100);
+    insights.push(`<strong>${ms10} students (${pct}%) scored full milestone marks (10/10).</strong> ` +
+      (pct>60?'Milestones were broadly achieved, suggesting good project tracking.':'A significant portion missed full milestone marks — a potential area for student support.'));
+  }
+
+  /* 6 — incomplete note (only when not filtered) */
+  if(!document.getElementById('fGrade').value&&!document.getElementById('fBonus').value&&!document.getElementById('fMilestone').value){
+    const totalEnrolled=ALL_DATA.length>0?(ALL_DATA[0]._totalRows||ALL_DATA.length):ALL_DATA.length;
+    if(totalEnrolled>ALL_DATA.length){
+      const dropPct=Math.round((totalEnrolled-ALL_DATA.length)/totalEnrolled*100);
+      insights.push(`<strong>${totalEnrolled-ALL_DATA.length} of ${totalEnrolled} enrolled students (~${dropPct}%) have no graded outcome</strong> — marked Incomplete, Unregistered, or blank. This is a significant engagement or completion signal.`);
+    }
+  }
+
+  document.getElementById('insights-list').innerHTML=insights.map((txt,i)=>
+    `<div class="iitem"><div class="inum">${i+1}</div><div>${txt}</div></div>`
+  ).join('');
+}
+</script>
+</body>
+</html>
