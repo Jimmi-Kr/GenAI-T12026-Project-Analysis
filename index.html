@@ -108,6 +108,30 @@ footer{text-align:center;font-size:11px;color:var(--text3);padding:1.5rem 0 2rem
       <div class="chart-wrap" style="height:270px"><canvas id="scatterChart"></canvas></div>
     </div>
   </div>
+  <div class="grid1">
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:grid;grid-template-columns:280px 1fr;min-height:540px">
+
+      <!-- LEFT PANEL -->
+      <div id="fn-panel" style="padding:16px 14px;border-right:.5px solid var(--border);overflow-y:auto;max-height:580px">
+        <div class="card-title">Edit stages</div>
+        <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:6px;padding:6px 10px;margin-bottom:12px">
+          Base (100%) = <strong id="baseVal" style="color:var(--text)">—</strong>
+        </div>
+        <div id="stageList"></div>
+        <button onclick="addStage()" style="width:100%;padding:8px;border:.5px dashed var(--border2);border-radius:8px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;margin-top:2px">+ add stage</button>
+      </div>
+
+      <!-- RIGHT: FUNNEL SVG -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding:16px 12px 12px">
+        <div class="card-title" style="text-align:center;margin-bottom:12px">Student journey funnel</div>
+        <svg id="fsvg" viewBox="0 0 360 500" style="width:100%;max-width:360px" role="img" aria-label="Funnel chart"></svg>
+        <div id="fnLegend" style="width:100%;max-width:360px;margin-top:14px;display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
   <div class="grid2">
     <div class="card">
       <div class="card-title">Average component performance (% of max marks)</div>
@@ -133,9 +157,134 @@ const GRADE_COLORS = {S:'#534AB7',A:'#1D9E75',B:'#378ADD',C:'#EF9F27',D:'#D85A30
 const BUCKET_COLORS = ['#E24B4A','#D85A30','#EF9F27','#378ADD','#1D9E75','#534AB7'];
 let CH = {};
 
+  
 document.getElementById('hdr-sub').textContent =
   META.total + ' enrolled · ' + META.graded + ' graded · ' + META.incomplete + ' incomplete';
 
+// ── FUNNEL CHART ──────────────────────────────────────────
+let fStages = [
+  { label:'Total enrollment',         n:1187, color:'#534AB7' },
+  { label:'Successfully registered',  n:951,  color:'#1D9E75' },
+  { label:'Eligible for L1 viva',     n:448,  color:'#378ADD' },
+  { label:'Appeared for L1 viva',     n:419,  color:'#EF9F27' },
+  { label:'Passed L1 viva',           n:357,  color:'#D85A30' },
+  { label:'Passed L2 viva (graded)',  n:346,  color:'#E24B4A' },
+];
+const F_COLORS = ['#534AB7','#1D9E75','#378ADD','#EF9F27','#D85A30','#E24B4A','#888780','#0F6E56'];
+
+function fEl(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+function fTxt(x,y,content,fill,size,weight,opacity){
+  const t = fEl('text');
+  t.setAttribute('x',x); t.setAttribute('y',y);
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('fill',fill);
+  t.setAttribute('font-size',size||12);
+  t.setAttribute('font-weight',weight||400);
+  t.setAttribute('font-family','system-ui,sans-serif');
+  if(opacity) t.setAttribute('opacity',opacity);
+  t.textContent = content;
+  return t;
+}
+
+function renderFunnelControls(){
+  const list = document.getElementById('stageList');
+  if(!list) return;
+  list.innerHTML = '';
+  const maxN = Math.max(...fStages.map(s=>s.n));
+  fStages.forEach((s,i) => {
+    const d = document.createElement('div');
+    d.style = 'background:var(--surface2);border:.5px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px';
+    d.innerHTML = `
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <div style="width:24px;height:24px;border-radius:50%;flex-shrink:0;position:relative;cursor:pointer;background:${s.color};border:.5px solid var(--border2)">
+          <input type="color" value="${s.color}" style="position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);opacity:0;cursor:pointer;border:none"
+            oninput="fStages[${i}].color=this.value;this.parentElement.style.background=this.value;drawFunnel()"/>
+        </div>
+        <input value="${s.label}" placeholder="Stage name"
+          style="flex:1;font-size:12px;padding:4px 7px;border:.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"
+          oninput="fStages[${i}].label=this.value;drawFunnel()"/>
+        ${fStages.length>2 ? `<button onclick="removeFStage(${i})"
+          style="width:22px;height:22px;border:.5px solid var(--border);border-radius:5px;background:transparent;color:var(--text2);cursor:pointer;font-size:13px">×</button>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:11px;color:var(--text3);width:38px">Count</span>
+        <input type="number" value="${s.n}" min="1" max="99999"
+          style="width:72px;font-size:12px;font-weight:500;padding:4px 7px;border:.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);text-align:right"
+          oninput="fStages[${i}].n=+this.value||1;document.getElementById('fsl${i}').value=+this.value||1;drawFunnel()"/>
+        <input type="range" id="fsl${i}" min="1" max="${maxN+300}" value="${s.n}" style="flex:1;accent-color:#534AB7"
+          oninput="fStages[${i}].n=+this.value;this.previousElementSibling.previousElementSibling.value=this.value;drawFunnel()"/>
+      </div>`;
+    list.appendChild(d);
+  });
+  const bv = document.getElementById('baseVal');
+  if(bv) bv.textContent = Math.max(...fStages.map(s=>s.n)).toLocaleString();
+}
+
+function addStage(){
+  const last = fStages[fStages.length-1];
+  fStages.push({ label:'New stage', n:Math.max(1,Math.round((last?.n||100)*0.8)), color:F_COLORS[fStages.length%F_COLORS.length] });
+  renderFunnelControls(); drawFunnel();
+}
+
+function removeFStage(i){ fStages.splice(i,1); renderFunnelControls(); drawFunnel(); }
+
+function drawFunnel(){
+  const svg = document.getElementById('fsvg');
+  if(!svg) return;
+  svg.innerHTML = '';
+  const bv = document.getElementById('baseVal');
+  const maxN = Math.max(...fStages.map(s=>s.n));
+  if(bv) bv.textContent = maxN.toLocaleString();
+
+  const W=360, n=fStages.length;
+  const topMaxHW=W*0.46, botMinHW=W*0.04;
+  const sliceH=Math.max(36,(440)/n);
+  const cx=W/2, startY=18;
+  const BASE=maxN;
+
+  function hw(count){ return botMinHW+(topMaxHW-botMinHW)*(count/maxN); }
+  const topHW = fStages.map(s=>hw(s.n));
+  const botHW = fStages.map((s,i)=> i<n-1 ? topHW[i+1] : botMinHW);
+
+  fStages.forEach((s,i)=>{
+    const y1=startY+i*sliceH, y2=y1+sliceH;
+    const tl=cx-topHW[i], tr=cx+topHW[i], bl=cx-botHW[i], br=cx+botHW[i];
+    const poly=fEl('polygon');
+    poly.setAttribute('points',`${tl},${y1} ${tr},${y1} ${br},${y2} ${bl},${y2}`);
+    poly.setAttribute('fill',s.color);
+    svg.appendChild(poly);
+    if(i>0){ const sep=fEl('line'); sep.setAttribute('x1',tl);sep.setAttribute('y1',y1);sep.setAttribute('x2',tr);sep.setAttribute('y2',y1);sep.setAttribute('stroke','rgba(255,255,255,0.35)');sep.setAttribute('stroke-width','1.5');svg.appendChild(sep); }
+    const midY=(y1+y2)/2, pct=Math.round(s.n/BASE*100);
+    const short=s.label.length>24?s.label.slice(0,22)+'…':s.label;
+    svg.appendChild(fTxt(cx,midY-7,short,'#fff',10.5,400,0.92));
+    svg.appendChild(fTxt(cx,midY+8,`${s.n.toLocaleString()}  ·  ${pct}%`,'#fff',12,600));
+    if(i>0){ const prev=fStages[i-1],lost=prev.n-s.n,lp=Math.round(lost/prev.n*100); if(lost>0){ const rx=cx+topHW[i]+8; const dt=fEl('text');dt.setAttribute('x',rx);dt.setAttribute('y',y1+10);dt.setAttribute('fill','#D85A30');dt.setAttribute('font-size','9.5');dt.setAttribute('font-family','system-ui,sans-serif');dt.setAttribute('font-weight','500');dt.textContent=`▼ −${lp}%`;svg.appendChild(dt); const dt2=fEl('text');dt2.setAttribute('x',rx);dt2.setAttribute('y',y1+21);dt2.setAttribute('fill','#888');dt2.setAttribute('font-size','9');dt2.setAttribute('font-family','system-ui,sans-serif');dt2.textContent=`−${lost.toLocaleString()}`;svg.appendChild(dt2); } }
+    const bt=fEl('text');bt.setAttribute('x',cx-topHW[i]-6);bt.setAttribute('y',midY+4);bt.setAttribute('text-anchor','end');bt.setAttribute('fill',s.color);bt.setAttribute('font-size','10');bt.setAttribute('font-weight','700');bt.setAttribute('font-family','system-ui,sans-serif');bt.textContent=`S${i+1}`;svg.appendChild(bt);
+  });
+
+  const capPoly=fEl('polygon');
+  const capY1=startY+n*sliceH;
+  capPoly.setAttribute('points',`${cx-botHW[n-1]},${capY1} ${cx+botHW[n-1]},${capY1} ${cx},${capY1+18}`);
+  capPoly.setAttribute('fill',fStages[n-1].color);
+  svg.appendChild(capPoly);
+  svg.setAttribute('viewBox',`0 0 ${W} ${startY+n*sliceH+24}`);
+
+  const leg=document.getElementById('fnLegend');
+  if(leg) leg.innerHTML=fStages.map((s,i)=>{
+    const pct=Math.round(s.n/BASE*100);
+    return `<div style="display:flex;align-items:center;gap:7px;font-size:11px">
+      <span style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></span>
+      <span style="flex:1;color:var(--text)">S${i+1} — ${s.label}</span>
+      <span style="color:var(--text);font-weight:500">${s.n.toLocaleString()}</span>
+      <span style="color:var(--text3);margin-left:8px;min-width:32px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+renderFunnelControls();
+drawFunnel();
+
+  
 function resetFilters(){
   ['fGrade','fBonus','fMilestone'].forEach(id => document.getElementById(id).value = '');
   update();
