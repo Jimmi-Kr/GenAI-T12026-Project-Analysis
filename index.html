@@ -219,18 +219,18 @@ function update(){
   data.forEach(r=>{const k=r.kaggle;if(!k)return;if(k<0.84)kd[0]++;else if(k<0.88)kd[1]++;else if(k<0.92)kd[2]++;else if(k<0.96)kd[3]++;else kd[4]++;});
   mk('kaggleChart',{type:'bar',data:{labels:kb,datasets:[{data:kd,backgroundColor:'#1D9E75',borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#888',autoSkip:false,maxRotation:35,font:{size:10}}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}}}}});
 
-  const ins=[];
-  const passPct=Math.round(passed/n*100);
-  ins.push(`<strong>${passed} of ${n} students (${passPct}%) passed the viva.</strong> Average final score is <strong>${avgS.toFixed(1)}</strong>, ranging from ${minS} to ${maxS}.`);
-  ins.push(`<strong>${sCount} students (${n?Math.round(sCount/n*100):0}%) earned S grade (&ge;90).</strong> Grade A has ${gc['A']} students and Grade B has ${gc['B']} &mdash; together ${Math.round((gc['A']+gc['B'])/n*100)}% of all graded students.`);
-  const wB=data.filter(r=>r.bonus>0),woB=data.filter(r=>r.bonus===0);
-  if(wB.length&&woB.length){const diff=(avg(wB,'finalScore')-avg(woB,'finalScore')).toFixed(1);ins.push(`<strong>Deployment bonus impact:</strong> Students with a bonus averaged <strong>${avg(wB,'finalScore').toFixed(1)}</strong> vs <strong>${avg(woB,'finalScore').toFixed(1)}</strong> without &mdash; a <strong>+${diff} point gap</strong>. ${Math.round(wB.length/n*100)}% of students earned it.`);}
-  const vivas=data.map(r=>r.viva).filter(v=>v>0);
-  if(vivas.length){const vA=avg(data,'viva').toFixed(1),vMn=Math.min(...vivas),vMx=Math.max(...vivas);ins.push(`<strong>Viva scores range ${vMn}&ndash;${vMx}</strong> (avg ${vA}/40). ${vMx-vMn<12?'The narrow spread at the top means viva rarely separates A from B students.':'The wide spread means viva is a meaningful differentiator.'}`);}
-  const kH=data.filter(r=>r.kaggle>=0.95).length,kL=data.filter(r=>r.kaggle>0&&r.kaggle<0.88).length;
-  ins.push(`<strong>Kaggle score is the silent lever for top grades.</strong> ${kH} students scored &ge;0.95, strongly correlating with S/A. The ${kL} students below 0.88 are concentrated in C/D.`);
-  ins.push(`<strong>${META.incomplete} of ${META.total} enrolled students (${Math.round(META.incomplete/META.total*100)}%) are marked Incomplete</strong> &mdash; only ${META.graded} reached a graded outcome. A significant dropout signal.`);
-  document.getElementById('insights-list').innerHTML=ins.map((t,i)=>`<div class="iitem"><div class="inum">${i+1}</div><div>${t}</div></div>`).join('');
+  // const ins=[];
+  // const passPct=Math.round(passed/n*100);
+  // ins.push(`<strong>${passed} of ${n} students (${passPct}%) passed the viva.</strong> Average final score is <strong>${avgS.toFixed(1)}</strong>, ranging from ${minS} to ${maxS}.`);
+  // ins.push(`<strong>${sCount} students (${n?Math.round(sCount/n*100):0}%) earned S grade (&ge;90).</strong> Grade A has ${gc['A']} students and Grade B has ${gc['B']} &mdash; together ${Math.round((gc['A']+gc['B'])/n*100)}% of all graded students.`);
+  // const wB=data.filter(r=>r.bonus>0),woB=data.filter(r=>r.bonus===0);
+  // if(wB.length&&woB.length){const diff=(avg(wB,'finalScore')-avg(woB,'finalScore')).toFixed(1);ins.push(`<strong>Deployment bonus impact:</strong> Students with a bonus averaged <strong>${avg(wB,'finalScore').toFixed(1)}</strong> vs <strong>${avg(woB,'finalScore').toFixed(1)}</strong> without &mdash; a <strong>+${diff} point gap</strong>. ${Math.round(wB.length/n*100)}% of students earned it.`);}
+  // const vivas=data.map(r=>r.viva).filter(v=>v>0);
+  // if(vivas.length){const vA=avg(data,'viva').toFixed(1),vMn=Math.min(...vivas),vMx=Math.max(...vivas);ins.push(`<strong>Viva scores range ${vMn}&ndash;${vMx}</strong> (avg ${vA}/40). ${vMx-vMn<12?'The narrow spread at the top means viva rarely separates A from B students.':'The wide spread means viva is a meaningful differentiator.'}`);}
+  // const kH=data.filter(r=>r.kaggle>=0.95).length,kL=data.filter(r=>r.kaggle>0&&r.kaggle<0.88).length;
+  // ins.push(`<strong>Kaggle score is the silent lever for top grades.</strong> ${kH} students scored &ge;0.95, strongly correlating with S/A. The ${kL} students below 0.88 are concentrated in C/D.`);
+  // ins.push(`<strong>${META.incomplete} of ${META.total} enrolled students (${Math.round(META.incomplete/META.total*100)}%) are marked Incomplete</strong> &mdash; only ${META.graded} reached a graded outcome. A significant dropout signal.`);
+  // document.getElementById('insights-list').innerHTML=ins.map((t,i)=>`<div class="iitem"><div class="inum">${i+1}</div><div>${t}</div></div>`).join('');
 }
 
 update();
